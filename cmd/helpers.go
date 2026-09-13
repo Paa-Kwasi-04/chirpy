@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	
 	"github.com/Paa-Kwasi-04/chirpy/internal/database"
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
@@ -70,6 +69,14 @@ func checkProfanity(body string) string {
 	return strings.Join(words, " ")
 }
 
+func convertStringToUUID(uuidSting string)(uuid.UUID,error){
+	parsedID, err := uuid.Parse(uuidSting)  //converts string uuid to uuid type
+	if err != nil {
+		return uuid.UUID{},err
+	}
+	return parsedID,nil
+}
+
 func createUser(email string, ctx context.Context, cfg *ApiConfig) (*database.User, error) {
 
 	now := time.Now()
@@ -84,9 +91,48 @@ func createUser(email string, ctx context.Context, cfg *ApiConfig) (*database.Us
 	if err != nil {
 		return nil, err
 	}
+	
+
 	return &user, nil
 }
 
 func deleteusers(ctx context.Context, cfg *ApiConfig) error {
 	return cfg.DB.DeleteUsers(ctx)
 }
+
+func createChirp(ctx context.Context,cfg *ApiConfig,body string, userID uuid.UUID)(*database.Chirp,error){
+	now := time.Now()
+	createChirpParam := database.CreateChirpParams{
+		ID: uuid.New(),
+		CreatedAt: now,
+		UpdatedAt: now,
+		Body: body,
+		UserID: userID,
+	}
+
+	chirp,err := cfg.DB.CreateChirp(ctx,createChirpParam)
+	if err != nil{
+		return nil,err
+	}
+	
+	return &chirp,nil
+}
+
+
+func getChirps(ctx context.Context,cfg *ApiConfig)([]database.Chirp,error){
+	chirps,err := cfg.DB.GetChirps(ctx)
+	if err != nil{
+		return nil,err
+	}
+	return chirps,nil
+}
+
+func getChirp(ctx context.Context, cfg *ApiConfig, id uuid.UUID)(*database.Chirp,error){
+	
+	chirp,err:= cfg.DB.GetChirp(ctx,id)
+	if err  != nil{
+		return nil,err
+	}
+	return &chirp,nil
+}
+

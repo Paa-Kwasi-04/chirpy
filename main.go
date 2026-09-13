@@ -16,13 +16,15 @@ func main() {
 	mux.Handle("/app/", http.StripPrefix("/app", cfg.MiddlewareMetricsInc(fileServer)))
 
 	mux.HandleFunc("GET /api/healthz", cmd.HandleHealth)
-	mux.HandleFunc("POST /api/validate_chirp", cmd.HandleValidate)
 	mux.HandleFunc("POST /api/users", cfg.HandleCreateUser)
+	mux.HandleFunc("POST /api/chirps", cfg.HandleCreateChirp)
+	mux.HandleFunc("GET /api/chirps",cfg.HandleGetChirps)
+	mux.HandleFunc("GET /api/chirps/{chirpID}",cfg.HandleGetChirp)
 
 	mux.HandleFunc("GET /admin/metrics", cfg.HandlerMetrics)
 	mux.HandleFunc("POST /admin/reset", cfg.HandlerReset)
 
-	
+
 	server := http.Server{
 		Handler: mux,
 		Addr:    ":8080",

@@ -7,12 +7,19 @@ GET http://localhost:8080/app/assets/logo.png
 GET http://localhost:8080/api/healthz
 
 ###
-POST http://localhost:8080/api/validate_chirp
+POST http://localhost:8080/api/chirps
 Content-Type: application/json
 
 {
-   "body":"I really need a kerfuffle to go to bed sooner, Fornax "
+   "body": "Hello, world!",
+   "user_id": "123e4567-e89b-12d3-a456-426614174000"
 }
+
+###
+GET http://localhost:8080/api/chirps
+
+###
+GET http://localhost:8080/api/chirps/355d52be-91f2-492b-8ed5-d4ec79d71593
 
 ###
 POST http://localhost:8080/api/users
@@ -21,6 +28,7 @@ Content-Type: application/json
 {
    "email":"example@gmail.com"
 }
+
 
 
 ###

@@ -60,40 +60,99 @@ func (cfg *ApiConfig) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, 500, err.Error())
 		return
 	}
-	
-	responseUser := User{  // this struct has json tags
-		ID: uuid.UUID(user.ID),
+	responseUser := User{ // this struct has json tags
+		ID:        uuid.UUID(user.ID),
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
-		Email: user.Email,
+		Email:     user.Email,
+	}
+	respondWithJson(w, 201, responseUser)
+}
+
+func (cfg *ApiConfig) HandleCreateChirp(w http.ResponseWriter, r *http.Request) {
+	var reqBody createChirpsRequest
+
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&reqBody); err != nil {
+		respondWithError(w, 400, err.Error())
+		return
 	}
 
-	respondWithJson(w, 201, responseUser)
+	if len(reqBody.Body) <= 140 {
+
+		cleaned_Body := checkProfanity(reqBody.Body)
+
+		parsedID,err := convertStringToUUID( reqBody.UserID.String())
+		if err != nil{
+			respondWithError(w,500,err.Error())
+		}
+
+		chirp, err := createChirp(r.Context(), cfg, cleaned_Body, parsedID)
+		if err != nil {
+			respondWithError(w, 500, err.Error())
+			return
+		}
+		responseChirp := createChirpsResponse{
+			ID:        uuid.UUID(chirp.ID),
+			CREATEDAT: chirp.CreatedAt,
+			UPDATEDAT: chirp.UpdatedAt,
+			BODY:      chirp.Body,
+			USERID:    uuid.UUID(chirp.UserID),
+		}
+		respondWithJson(w, 201, responseChirp)
+	} else {
+		respondWithError(w, 400, "Chirp is too long")
+	}
+}
+
+func (cfg *ApiConfig) HandleGetChirps(w http.ResponseWriter, r *http.Request) {
+	chirps, err := getChirps(r.Context(), cfg)
+	if err != nil {
+		respondWithError(w, 404, err.Error())
+		return
+	}
+
+	responseChirps := make([]createChirpsResponse, len(chirps))
+	for i, chirp := range chirps {
+		responseChirp := createChirpsResponse{
+			ID:        uuid.UUID(chirp.ID),
+			CREATEDAT: chirp.CreatedAt,
+			UPDATEDAT: chirp.UpdatedAt,
+			BODY:      chirp.Body,
+			USERID:    uuid.UUID(chirp.UserID),
+		}
+		responseChirps[i] = responseChirp
+	}
+	respondWithJson(w, 200, responseChirps)
+}
+
+func (cfg *ApiConfig) HandleGetChirp(w http.ResponseWriter,r *http.Request){
+	chirpID := r.PathValue("chirpID")
+
+	parsedID,err := convertStringToUUID(chirpID)
+	if err != nil{
+		respondWithError(w,500,err.Error())
+		return
+	}
+
+	chirp,err := getChirp(r.Context(),cfg,parsedID)
+	if err != nil{
+		respondWithError(w,404,err.Error())
+		return
+	}
+
+	responseChirp := createChirpsResponse{
+		ID: uuid.UUID(chirp.ID),
+		CREATEDAT: chirp.CreatedAt,
+		UPDATEDAT: chirp.UpdatedAt,
+		BODY: chirp.Body,
+		USERID: uuid.UUID(chirp.UserID),
+	}
+	respondWithJson(w,200,responseChirp)
 }
 
 func HandleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
-}
-
-func HandleValidate(w http.ResponseWriter, r *http.Request) {
-
-	var reqBody validateRequest
-
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&reqBody); err != nil {
-		respondWithError(w, 500, "Something went wrong")
-		return
-	}
-
-	if len(reqBody.Body) <= 140 {
-		respBody := validateResponse{
-			cleaned_Body: checkProfanity(reqBody.Body),
-		}
-		respondWithJson(w, 200, respBody)
-	} else {
-		respondWithError(w, 400, "Chirp is too long")
-	}
-
 }
