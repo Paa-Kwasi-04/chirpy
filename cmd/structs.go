@@ -1,11 +1,27 @@
 package cmd
 
-import "sync/atomic"
+import (
+	"sync/atomic"
+	"time"
+	"uuid"
+
+	"github.com/Paa-Kwasi-04/chirpy/internal/database"
+)
 
 type ApiConfig struct {
 	fileserverHits atomic.Int32
+	DB             *database.Queries
+	Platform       string
 }
 
+type User struct {  //converts db user struct t user struct with tags
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
+}
+
+// struct for POST /api/validate_chirp"
 type validateRequest struct {
 	Body string `json:"body"`
 }
@@ -15,5 +31,10 @@ type validateError struct {
 }
 
 type validateResponse struct {
-	Cleaned_Body string `json:"cleaned_body"`
+	cleaned_Body string
+}
+
+// struct for POST /api/users
+type createUsersRequest struct {
+	Email string `json:"email"`
 }

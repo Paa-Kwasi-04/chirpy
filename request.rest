@@ -14,6 +14,14 @@ Content-Type: application/json
    "body":"I really need a kerfuffle to go to bed sooner, Fornax "
 }
 
+###
+POST http://localhost:8080/api/users
+Content-Type: application/json
+
+{
+   "email":"example@gmail.com"
+}
+
 
 ###
 GET http://localhost:8080/admin/metrics
