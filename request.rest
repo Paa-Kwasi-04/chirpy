@@ -1,0 +1,23 @@
+GET http://localhost:8080/app/ 
+
+###
+GET http://localhost:8080/app/assets/logo.png
+
+###
+GET http://localhost:8080/api/healthz
+
+###
+POST http://localhost:8080/api/validate_chirp
+Content-Type: application/json
+
+{
+   "body":"I really need a kerfuffle to go to bed sooner, Fornax "
+}
+
+
+###
+GET http://localhost:8080/admin/metrics
+
+###
+POST http://localhost:8080/admin/reset
+
