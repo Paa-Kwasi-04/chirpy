@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Paa-Kwasi-04/chirpy/internal/auth"
 	"github.com/Paa-Kwasi-04/chirpy/internal/database"
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
@@ -69,29 +71,34 @@ func checkProfanity(body string) string {
 	return strings.Join(words, " ")
 }
 
-func convertStringToUUID(uuidSting string)(uuid.UUID,error){
-	parsedID, err := uuid.Parse(uuidSting)  //converts string uuid to uuid type
+func convertStringToUUID(uuidSting string) (uuid.UUID, error) {
+	parsedID, err := uuid.Parse(uuidSting) //converts string uuid to uuid type
 	if err != nil {
-		return uuid.UUID{},err
+		return uuid.UUID{}, err
 	}
-	return parsedID,nil
+	return parsedID, nil
 }
 
-func createUser(email string, ctx context.Context, cfg *ApiConfig) (*database.User, error) {
+func createUser(email string, password string, ctx context.Context, cfg *ApiConfig) (*database.User, error) {
+
+	hash_password, err := auth.HashPassword(password)
+	if err != nil {
+		return nil, err
+	}
 
 	now := time.Now()
 	createUserParam := database.CreateUserParams{
-		ID:        uuid.New(),
-		CreatedAt: now,
-		UpdatedAt: now,
-		Email:     email,
+		ID:             uuid.New(),
+		CreatedAt:      now,
+		UpdatedAt:      now,
+		Email:          email,
+		HashedPassword: hash_password,
 	}
 
 	user, err := cfg.DB.CreateUser(ctx, createUserParam)
 	if err != nil {
 		return nil, err
 	}
-	
 
 	return &user, nil
 }
@@ -100,39 +107,57 @@ func deleteusers(ctx context.Context, cfg *ApiConfig) error {
 	return cfg.DB.DeleteUsers(ctx)
 }
 
-func createChirp(ctx context.Context,cfg *ApiConfig,body string, userID uuid.UUID)(*database.Chirp,error){
+func getUser(ctx context.Context, email string, password string, cfg *ApiConfig) (*database.User, error) {
+
+	user, err := cfg.DB.GetUser(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+
+	isMatch, err := auth.CheckPasswordHash(password, user.HashedPassword)
+	if err != nil {
+		return nil, err
+	}
+
+	if !isMatch {
+		return nil, fmt.Errorf("Incorrect email or password")
+	}
+
+	return &user, nil
+
+}
+
+func createChirp(ctx context.Context, cfg *ApiConfig, body string, userID uuid.UUID) (*database.Chirp, error) {
 	now := time.Now()
 	createChirpParam := database.CreateChirpParams{
-		ID: uuid.New(),
+		ID:        uuid.New(),
 		CreatedAt: now,
 		UpdatedAt: now,
-		Body: body,
-		UserID: userID,
+		Body:      body,
+		UserID:    userID,
 	}
 
-	chirp,err := cfg.DB.CreateChirp(ctx,createChirpParam)
-	if err != nil{
-		return nil,err
+	chirp, err := cfg.DB.CreateChirp(ctx, createChirpParam)
+	if err != nil {
+		return nil, err
 	}
-	
-	return &chirp,nil
+
+	return &chirp, nil
 }
 
-
-func getChirps(ctx context.Context,cfg *ApiConfig)([]database.Chirp,error){
-	chirps,err := cfg.DB.GetChirps(ctx)
-	if err != nil{
-		return nil,err
+func getChirps(ctx context.Context, cfg *ApiConfig) ([]database.Chirp, error) {
+	chirps, err := cfg.DB.GetChirps(ctx)
+	if err != nil {
+		return nil, err
 	}
-	return chirps,nil
+	return chirps, nil
 }
 
-func getChirp(ctx context.Context, cfg *ApiConfig, id uuid.UUID)(*database.Chirp,error){
-	
-	chirp,err:= cfg.DB.GetChirp(ctx,id)
-	if err  != nil{
-		return nil,err
-	}
-	return &chirp,nil
-}
+func getChirp(ctx context.Context, cfg *ApiConfig, id uuid.UUID) (*database.Chirp, error) {
 
+	chirp, err := cfg.DB.GetChirp(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &chirp, nil
+}

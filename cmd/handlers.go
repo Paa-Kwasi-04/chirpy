@@ -48,14 +48,14 @@ func (cfg *ApiConfig) HandlerReset(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *ApiConfig) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
-	var reqBody createUsersRequest
+	var reqBody usersRequest
 
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&reqBody); err != nil {
 		respondWithError(w, 500, err.Error())
 		return
 	}
-	user, err := createUser(reqBody.Email, r.Context(), cfg)
+	user, err := createUser(reqBody.Email,reqBody.Password,r.Context(), cfg)
 	if err != nil {
 		respondWithError(w, 500, err.Error())
 		return
@@ -67,6 +67,30 @@ func (cfg *ApiConfig) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 		Email:     user.Email,
 	}
 	respondWithJson(w, 201, responseUser)
+}
+
+func (cfg *ApiConfig) HandleLogin(w http.ResponseWriter, r *http.Request) {
+	var reqBody usersRequest
+
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&reqBody); err != nil {
+		respondWithError(w, 500, err.Error())
+		return
+	}
+
+	user,err := getUser(r.Context(),reqBody.Email,reqBody.Password,cfg)
+	if err != nil{
+		respondWithError(w,401,err.Error())
+		return
+	}
+
+	responseUser := User{
+		ID: uuid.UUID(user.ID),
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+		Email: user.Email,
+	}
+	respondWithJson(w,200,responseUser)
 }
 
 func (cfg *ApiConfig) HandleCreateChirp(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +109,7 @@ func (cfg *ApiConfig) HandleCreateChirp(w http.ResponseWriter, r *http.Request) 
 		parsedID,err := convertStringToUUID( reqBody.UserID.String())
 		if err != nil{
 			respondWithError(w,500,err.Error())
+			return
 		}
 
 		chirp, err := createChirp(r.Context(), cfg, cleaned_Body, parsedID)
@@ -94,10 +119,10 @@ func (cfg *ApiConfig) HandleCreateChirp(w http.ResponseWriter, r *http.Request) 
 		}
 		responseChirp := createChirpsResponse{
 			ID:        uuid.UUID(chirp.ID),
-			CREATEDAT: chirp.CreatedAt,
-			UPDATEDAT: chirp.UpdatedAt,
-			BODY:      chirp.Body,
-			USERID:    uuid.UUID(chirp.UserID),
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body:      chirp.Body,
+			UserID:    uuid.UUID(chirp.UserID),
 		}
 		respondWithJson(w, 201, responseChirp)
 	} else {
@@ -116,10 +141,10 @@ func (cfg *ApiConfig) HandleGetChirps(w http.ResponseWriter, r *http.Request) {
 	for i, chirp := range chirps {
 		responseChirp := createChirpsResponse{
 			ID:        uuid.UUID(chirp.ID),
-			CREATEDAT: chirp.CreatedAt,
-			UPDATEDAT: chirp.UpdatedAt,
-			BODY:      chirp.Body,
-			USERID:    uuid.UUID(chirp.UserID),
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body:      chirp.Body,
+			UserID:    uuid.UUID(chirp.UserID),
 		}
 		responseChirps[i] = responseChirp
 	}
@@ -143,10 +168,10 @@ func (cfg *ApiConfig) HandleGetChirp(w http.ResponseWriter,r *http.Request){
 
 	responseChirp := createChirpsResponse{
 		ID: uuid.UUID(chirp.ID),
-		CREATEDAT: chirp.CreatedAt,
-		UPDATEDAT: chirp.UpdatedAt,
-		BODY: chirp.Body,
-		USERID: uuid.UUID(chirp.UserID),
+		CreatedAt: chirp.CreatedAt,
+		UpdatedAt: chirp.UpdatedAt,
+		Body: chirp.Body,
+		UserID: uuid.UUID(chirp.UserID),
 	}
 	respondWithJson(w,200,responseChirp)
 }

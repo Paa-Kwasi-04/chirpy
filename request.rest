@@ -26,10 +26,18 @@ POST http://localhost:8080/api/users
 Content-Type: application/json
 
 {
-   "email":"example@gmail.com"
+   "password": "04234",
+   "email": "lane@example.com"
 }
 
+###
+POST http://localhost:8080/api/login
+Content-Type: application/json
 
+{
+   "password": "04234",
+   "email": "lane@example.com"
+}
 
 ###
 GET http://localhost:8080/admin/metrics

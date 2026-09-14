@@ -30,10 +30,10 @@ type createChirpsRequest struct{
 
 type createChirpsResponse struct{
 	ID uuid.UUID  `json:"id"`
-	CREATEDAT time.Time `json:"created_at"`
-	UPDATEDAT time.Time `json:"updated_at"`
-	BODY string  `json:"body"`
-	USERID uuid.UUID  `json:"user_id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Body string  `json:"body"`
+	UserID uuid.UUID  `json:"user_id"`
 }
 
 
@@ -52,6 +52,7 @@ type validateResponse struct {
 
 
 // struct for POST /api/users
-type createUsersRequest struct {
+type usersRequest struct {
+	Password string `json:"password"`
 	Email string `json:"email"`
 }
