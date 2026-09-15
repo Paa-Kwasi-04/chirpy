@@ -3,39 +3,38 @@ package cmd
 import (
 	"sync/atomic"
 	"time"
-	"uuid"
 
 	"github.com/Paa-Kwasi-04/chirpy/internal/database"
+	"github.com/google/uuid"
 )
 
 type ApiConfig struct {
 	fileserverHits atomic.Int32
 	DB             *database.Queries
 	Platform       string
+	TokenSecret    string
 }
 
-type User struct {  //converts db user struct t user struct with tags
+type User struct { //converts db user struct t user struct with tags
 	ID        uuid.UUID `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
+	Token     string    `json:"token"`
 }
 
-
-//struct for POST /api/chirps
-type createChirpsRequest struct{
-	Body string  `json:"body"`
-	UserID uuid.UUID `json:"user_id"`
+// struct for POST /api/chirps
+type createChirpsRequest struct {
+	Body  string `json:"body"`
 }
 
-type createChirpsResponse struct{
-	ID uuid.UUID  `json:"id"`
+type createChirpsResponse struct {
+	ID        uuid.UUID `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-	Body string  `json:"body"`
-	UserID uuid.UUID  `json:"user_id"`
+	Body      string    `json:"body"`
+	UserID    uuid.UUID `json:"user_id"`
 }
-
 
 // struct for POST /api/validate_chirp"
 type validateRequest struct {
@@ -50,9 +49,9 @@ type validateResponse struct {
 	cleaned_Body string
 }
 
-
 // struct for POST /api/users
 type usersRequest struct {
-	Password string `json:"password"`
-	Email string `json:"email"`
+	Password  string `json:"password"`
+	Email     string `json:"email"`
+	ExpiresIn int    `json:"expires_in_seconds"`
 }

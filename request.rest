@@ -36,7 +36,8 @@ Content-Type: application/json
 
 {
    "password": "04234",
-   "email": "lane@example.com"
+   "email": "lane@example.com",
+   "expires_in_seconds": 2
 }
 
 ###

@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"uuid"
+
+	"github.com/Paa-Kwasi-04/chirpy/internal/auth"
+	"github.com/google/uuid"
 )
 
 func (cfg *ApiConfig) MiddlewareMetricsInc(next http.Handler) http.Handler {
@@ -55,22 +57,20 @@ func (cfg *ApiConfig) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, 500, err.Error())
 		return
 	}
-	user, err := createUser(reqBody.Email,reqBody.Password,r.Context(), cfg)
+	
+	user, err := createUser(reqBody, r.Context(), cfg)
 	if err != nil {
 		respondWithError(w, 500, err.Error())
 		return
 	}
-	responseUser := User{ // this struct has json tags
-		ID:        uuid.UUID(user.ID),
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
-	}
-	respondWithJson(w, 201, responseUser)
+	respondWithJson(w, 201, user)
 }
 
+const oneHour = 60*60
 func (cfg *ApiConfig) HandleLogin(w http.ResponseWriter, r *http.Request) {
-	var reqBody usersRequest
+	reqBody := usersRequest{
+		ExpiresIn: -1,  // if negative one the user didn't send expires in
+	}
 
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&reqBody); err != nil {
@@ -78,19 +78,17 @@ func (cfg *ApiConfig) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user,err := getUser(r.Context(),reqBody.Email,reqBody.Password,cfg)
-	if err != nil{
-		respondWithError(w,401,err.Error())
-		return
+	// If the user didn't send expires in or sent a value greater than one hour, set it to one hour
+	if reqBody.ExpiresIn == -1 || reqBody.ExpiresIn > oneHour {
+		reqBody.ExpiresIn = oneHour
 	}
 
-	responseUser := User{
-		ID: uuid.UUID(user.ID),
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email: user.Email,
+	user, err := getUser(r.Context(), reqBody, cfg)
+	if err != nil {
+		respondWithError(w, 401, err.Error())
+		return
 	}
-	respondWithJson(w,200,responseUser)
+	respondWithJson(w, 200, user)
 }
 
 func (cfg *ApiConfig) HandleCreateChirp(w http.ResponseWriter, r *http.Request) {
@@ -106,25 +104,28 @@ func (cfg *ApiConfig) HandleCreateChirp(w http.ResponseWriter, r *http.Request) 
 
 		cleaned_Body := checkProfanity(reqBody.Body)
 
-		parsedID,err := convertStringToUUID( reqBody.UserID.String())
+		// Get the bearer token from the request headers
+		token,err := auth.GetBearerToken(r.Header)
 		if err != nil{
-			respondWithError(w,500,err.Error())
+			respondWithError(w,401,err.Error())
 			return
 		}
 
-		chirp, err := createChirp(r.Context(), cfg, cleaned_Body, parsedID)
+		// Validate the JWT token and extract the user ID
+		userID,err := auth.ValidateJWT(token,cfg.TokenSecret)
+		if err != nil{
+			respondWithError(w,401,err.Error())
+			return
+		}
+
+		// Create the chirp in the database
+		chirp, err := createChirp(r.Context(), cfg, cleaned_Body, userID)
 		if err != nil {
 			respondWithError(w, 500, err.Error())
 			return
 		}
-		responseChirp := createChirpsResponse{
-			ID:        uuid.UUID(chirp.ID),
-			CreatedAt: chirp.CreatedAt,
-			UpdatedAt: chirp.UpdatedAt,
-			Body:      chirp.Body,
-			UserID:    uuid.UUID(chirp.UserID),
-		}
-		respondWithJson(w, 201, responseChirp)
+		respondWithJson(w, 201, chirp)
+
 	} else {
 		respondWithError(w, 400, "Chirp is too long")
 	}
@@ -136,44 +137,24 @@ func (cfg *ApiConfig) HandleGetChirps(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, 404, err.Error())
 		return
 	}
-
-	responseChirps := make([]createChirpsResponse, len(chirps))
-	for i, chirp := range chirps {
-		responseChirp := createChirpsResponse{
-			ID:        uuid.UUID(chirp.ID),
-			CreatedAt: chirp.CreatedAt,
-			UpdatedAt: chirp.UpdatedAt,
-			Body:      chirp.Body,
-			UserID:    uuid.UUID(chirp.UserID),
-		}
-		responseChirps[i] = responseChirp
-	}
-	respondWithJson(w, 200, responseChirps)
+	respondWithJson(w, 200, chirps)
 }
 
-func (cfg *ApiConfig) HandleGetChirp(w http.ResponseWriter,r *http.Request){
+func (cfg *ApiConfig) HandleGetChirp(w http.ResponseWriter, r *http.Request) {
 	chirpID := r.PathValue("chirpID")
 
-	parsedID,err := convertStringToUUID(chirpID)
-	if err != nil{
-		respondWithError(w,500,err.Error())
+	parsedID, err := uuid.Parse(chirpID)
+	if err != nil {
+		respondWithError(w, 500, err.Error())
 		return
 	}
 
-	chirp,err := getChirp(r.Context(),cfg,parsedID)
-	if err != nil{
-		respondWithError(w,404,err.Error())
+	chirp, err := getChirp(r.Context(), cfg, parsedID)
+	if err != nil {
+		respondWithError(w, 404, err.Error())
 		return
 	}
-
-	responseChirp := createChirpsResponse{
-		ID: uuid.UUID(chirp.ID),
-		CreatedAt: chirp.CreatedAt,
-		UpdatedAt: chirp.UpdatedAt,
-		Body: chirp.Body,
-		UserID: uuid.UUID(chirp.UserID),
-	}
-	respondWithJson(w,200,responseChirp)
+	respondWithJson(w, 200, chirp)
 }
 
 func HandleHealth(w http.ResponseWriter, r *http.Request) {

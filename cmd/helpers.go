@@ -22,6 +22,7 @@ func Startup() *ApiConfig {
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
 	platform := os.Getenv("PLATFORM")
+	tokenSecret := os.Getenv("TOKEN_SECRET")
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -34,6 +35,7 @@ func Startup() *ApiConfig {
 	var cfg = ApiConfig{
 		DB:       dbQueries,
 		Platform: platform,
+		TokenSecret: tokenSecret,
 	}
 	return &cfg
 }
@@ -71,17 +73,10 @@ func checkProfanity(body string) string {
 	return strings.Join(words, " ")
 }
 
-func convertStringToUUID(uuidSting string) (uuid.UUID, error) {
-	parsedID, err := uuid.Parse(uuidSting) //converts string uuid to uuid type
-	if err != nil {
-		return uuid.UUID{}, err
-	}
-	return parsedID, nil
-}
 
-func createUser(email string, password string, ctx context.Context, cfg *ApiConfig) (*database.User, error) {
+func createUser(reqBody usersRequest, ctx context.Context, cfg *ApiConfig) (*User, error) {
 
-	hash_password, err := auth.HashPassword(password)
+	hash_password, err := auth.HashPassword(reqBody.Password)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +86,7 @@ func createUser(email string, password string, ctx context.Context, cfg *ApiConf
 		ID:             uuid.New(),
 		CreatedAt:      now,
 		UpdatedAt:      now,
-		Email:          email,
+		Email:          reqBody.Email,
 		HashedPassword: hash_password,
 	}
 
@@ -100,21 +95,29 @@ func createUser(email string, password string, ctx context.Context, cfg *ApiConf
 		return nil, err
 	}
 
-	return &user, nil
+	// Create a response user struct to hold the response data
+	responseUser := User{ 
+		ID:        user.ID,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+		Email:     user.Email,
+	}
+
+	return &responseUser, nil
 }
 
 func deleteusers(ctx context.Context, cfg *ApiConfig) error {
 	return cfg.DB.DeleteUsers(ctx)
 }
 
-func getUser(ctx context.Context, email string, password string, cfg *ApiConfig) (*database.User, error) {
+func getUser(ctx context.Context, reqBody usersRequest, cfg *ApiConfig) (*User, error) {
 
-	user, err := cfg.DB.GetUser(ctx, email)
+	user, err := cfg.DB.GetUser(ctx, reqBody.Email)
 	if err != nil {
 		return nil, err
 	}
 
-	isMatch, err := auth.CheckPasswordHash(password, user.HashedPassword)
+	isMatch, err := auth.CheckPasswordHash(reqBody.Password, user.HashedPassword)
 	if err != nil {
 		return nil, err
 	}
@@ -123,11 +126,27 @@ func getUser(ctx context.Context, email string, password string, cfg *ApiConfig)
 		return nil, fmt.Errorf("Incorrect email or password")
 	}
 
-	return &user, nil
+	expiresIn := time.Duration(reqBody.ExpiresIn)* time.Second 
 
+	// Generate JWT token for the user
+	token,err := auth.MakeJWT(user.ID,cfg.TokenSecret,expiresIn)
+	if err != nil{
+		return nil,err
+	}
+
+	// Create a response user struct to hold the response data
+	responseUser := User{
+		ID:        user.ID,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+		Email:     user.Email,
+		Token: token,
+	}
+
+	return &responseUser, nil
 }
 
-func createChirp(ctx context.Context, cfg *ApiConfig, body string, userID uuid.UUID) (*database.Chirp, error) {
+func createChirp(ctx context.Context, cfg *ApiConfig, body string, userID uuid.UUID) (*createChirpsResponse, error) {
 	now := time.Now()
 	createChirpParam := database.CreateChirpParams{
 		ID:        uuid.New(),
@@ -142,22 +161,56 @@ func createChirp(ctx context.Context, cfg *ApiConfig, body string, userID uuid.U
 		return nil, err
 	}
 
-	return &chirp, nil
+	// Create a response chirp struct to hold the response data
+	responseChirp := createChirpsResponse{
+			ID:        chirp.ID,
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body:      chirp.Body,
+			UserID:    chirp.UserID,
+		}
+
+	return &responseChirp, nil
 }
 
-func getChirps(ctx context.Context, cfg *ApiConfig) ([]database.Chirp, error) {
+func getChirps(ctx context.Context, cfg *ApiConfig) ([]createChirpsResponse, error) {
 	chirps, err := cfg.DB.GetChirps(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return chirps, nil
+	
+	
+	// Create a slice to hold the response chirps 
+	responseChirps := make([]createChirpsResponse, len(chirps))
+	for i, chirp := range chirps {
+		responseChirp := createChirpsResponse{
+			ID:        chirp.ID,
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body:      chirp.Body,
+			UserID:    chirp.UserID,
+		}
+		responseChirps[i] = responseChirp
+	}
+	
+	return responseChirps, nil
 }
 
-func getChirp(ctx context.Context, cfg *ApiConfig, id uuid.UUID) (*database.Chirp, error) {
+func getChirp(ctx context.Context, cfg *ApiConfig, id uuid.UUID) (*createChirpsResponse, error) {
 
 	chirp, err := cfg.DB.GetChirp(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	return &chirp, nil
+
+	// Create a response chirp struct to hold the response data
+	responseChirp := createChirpsResponse{
+		ID:        chirp.ID,
+		CreatedAt: chirp.CreatedAt,
+		UpdatedAt: chirp.UpdatedAt,
+		Body:      chirp.Body,
+		UserID:    chirp.UserID,
+	}
+
+	return &responseChirp, nil
 }
