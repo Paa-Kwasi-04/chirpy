@@ -16,16 +16,17 @@ type ApiConfig struct {
 }
 
 type User struct { //converts db user struct t user struct with tags
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
-	Token     string    `json:"token"`
+	ID           uuid.UUID `json:"id"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	Email        string    `json:"email"`
+	Token        string    `json:"token"`
+	RefreshToken string    `json:"refresh_token"`
 }
 
 // struct for POST /api/chirps
 type createChirpsRequest struct {
-	Body  string `json:"body"`
+	Body string `json:"body"`
 }
 
 type createChirpsResponse struct {
@@ -51,7 +52,11 @@ type validateResponse struct {
 
 // struct for POST /api/users
 type usersRequest struct {
-	Password  string `json:"password"`
-	Email     string `json:"email"`
-	ExpiresIn int    `json:"expires_in_seconds"`
+	Password string `json:"password"`
+	Email    string `json:"email"`
+}
+
+// struct for POST /api/refresh
+type accessTokenRequest struct {
+	Token string `json:"token"`
 }

@@ -26,8 +26,8 @@ POST http://localhost:8080/api/users
 Content-Type: application/json
 
 {
-   "password": "04234",
-   "email": "lane@example.com"
+  "email": "saul@bettercall.com",
+  "password": "123456"
 }
 
 ###
@@ -35,10 +35,17 @@ POST http://localhost:8080/api/login
 Content-Type: application/json
 
 {
-   "password": "04234",
-   "email": "lane@example.com",
-   "expires_in_seconds": 2
+  "email": "saul@bettercall.com",
+  "password": "123456"
 }
+
+###
+POST http://localhost:8080/api/refresh
+Authorization: Bearer 231acdd9877e3f68b3c53e2cf6513cbd6bf089618d6284c872715b284db6cd8b
+
+###
+POST http://localhost:8080/api/revoke
+Authorization: Bearer 231acdd9877e3f68b3c53e2cf6513cbd6bf089618d6284c872715b284db6cd8b
 
 ###
 GET http://localhost:8080/admin/metrics

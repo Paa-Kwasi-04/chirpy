@@ -60,6 +60,12 @@ func respondWithJson(w http.ResponseWriter, statusCode int, payload any) {
 	w.Write([]byte(respJson))
 }
 
+func respondWithText(w http.ResponseWriter,statusCode int,text string){
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(statusCode)
+	w.Write([]byte(text))
+}
+
 var profaneWords = []string{"kerfuffle", "sharbert", "fornax"}
 
 func checkProfanity(body string) string {
@@ -110,6 +116,7 @@ func deleteusers(ctx context.Context, cfg *ApiConfig) error {
 	return cfg.DB.DeleteUsers(ctx)
 }
 
+const TokenExpiresIn = 1 * time.Hour
 func getUser(ctx context.Context, reqBody usersRequest, cfg *ApiConfig) (*User, error) {
 
 	user, err := cfg.DB.GetUser(ctx, reqBody.Email)
@@ -126,10 +133,16 @@ func getUser(ctx context.Context, reqBody usersRequest, cfg *ApiConfig) (*User, 
 		return nil, fmt.Errorf("Incorrect email or password")
 	}
 
-	expiresIn := time.Duration(reqBody.ExpiresIn)* time.Second 
-
+	
 	// Generate JWT token for the user
-	token,err := auth.MakeJWT(user.ID,cfg.TokenSecret,expiresIn)
+	token,err := auth.MakeJWT(user.ID,cfg.TokenSecret,TokenExpiresIn)
+	if err != nil{
+		return nil,err
+	}
+
+	refreshToken:= auth.MakeRefreshToken()
+
+	refreshTokenObj ,err := createRefreshToken(ctx,refreshToken,user.ID,cfg)
 	if err != nil{
 		return nil,err
 	}
@@ -141,10 +154,54 @@ func getUser(ctx context.Context, reqBody usersRequest, cfg *ApiConfig) (*User, 
 		UpdatedAt: user.UpdatedAt,
 		Email:     user.Email,
 		Token: token,
+		RefreshToken: refreshTokenObj.Token,
 	}
 
 	return &responseUser, nil
 }
+
+
+func createRefreshToken(ctx context.Context,token string,user_ID uuid.UUID,cfg *ApiConfig)(*database.RefreshToken,error){
+	
+	now := time.Now()
+	inSixtyDays := now.AddDate(0, 0, 60) // expires in 60days
+	refreshTokenParam := database.CreateRefreshTokenParams{
+		Token: token,
+		CreatedAt: now,
+		UpdatedAt: now,
+		UserID: user_ID,
+		ExpiresAt: inSixtyDays,
+	}
+	
+	refreshToken,err := cfg.DB.CreateRefreshToken(ctx,refreshTokenParam)
+	if err != nil{
+		return nil,err
+	}
+	return &refreshToken,nil
+}
+
+func getUserFromRefreshToken(ctx context.Context,refreshToken string,cfg *ApiConfig)(*database.GetUserFromRefreshTokenRow,error){
+	userFromRefreshToken,err := cfg.DB.GetUserFromRefreshToken(ctx,refreshToken)
+	if err != nil{
+		return nil,err
+	}
+	return &userFromRefreshToken,nil
+}
+
+func revokeRefreshToken(ctx context.Context,cfg *ApiConfig,token string)error{
+	now := sql.NullTime{
+		Time: time.Now(),
+		Valid: true,
+	}
+	revokeTokenParam := database.RevokeRefreshTokenParams{
+		RevokedAt: now,
+		Token: token,
+	}
+
+	return cfg.DB.RevokeRefreshToken(ctx,revokeTokenParam)
+}
+
+
 
 func createChirp(ctx context.Context, cfg *ApiConfig, body string, userID uuid.UUID) (*createChirpsResponse, error) {
 	now := time.Now()
@@ -214,3 +271,5 @@ func getChirp(ctx context.Context, cfg *ApiConfig, id uuid.UUID) (*createChirpsR
 
 	return &responseChirp, nil
 }
+
+

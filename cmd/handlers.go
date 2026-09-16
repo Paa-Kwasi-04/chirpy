@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/Paa-Kwasi-04/chirpy/internal/auth"
 	"github.com/google/uuid"
@@ -57,7 +58,7 @@ func (cfg *ApiConfig) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, 500, err.Error())
 		return
 	}
-	
+
 	user, err := createUser(reqBody, r.Context(), cfg)
 	if err != nil {
 		respondWithError(w, 500, err.Error())
@@ -66,21 +67,14 @@ func (cfg *ApiConfig) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 	respondWithJson(w, 201, user)
 }
 
-const oneHour = 60*60
 func (cfg *ApiConfig) HandleLogin(w http.ResponseWriter, r *http.Request) {
-	reqBody := usersRequest{
-		ExpiresIn: -1,  // if negative one the user didn't send expires in
-	}
+
+	var reqBody usersRequest
 
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&reqBody); err != nil {
 		respondWithError(w, 500, err.Error())
 		return
-	}
-
-	// If the user didn't send expires in or sent a value greater than one hour, set it to one hour
-	if reqBody.ExpiresIn == -1 || reqBody.ExpiresIn > oneHour {
-		reqBody.ExpiresIn = oneHour
 	}
 
 	user, err := getUser(r.Context(), reqBody, cfg)
@@ -89,6 +83,61 @@ func (cfg *ApiConfig) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondWithJson(w, 200, user)
+}
+
+func (cfg *ApiConfig) HandleRefresh(w http.ResponseWriter, r *http.Request) {
+	refreshToken, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, 401, err.Error())
+		return
+	}
+	// Get the user associated with the refresh token from the database
+	user, err := getUserFromRefreshToken(r.Context(), refreshToken, cfg)
+	if err != nil {
+		respondWithError(w, 401, err.Error())
+		return
+	}
+
+	// Check if the refresh token has expired or been revoked
+	remainingTime := user.ExpiresAt.Sub(time.Now())
+	if remainingTime <= 0 {
+		respondWithError(w, 401, "refresh token has expired")
+		return
+	}
+
+	if user.RevokedAt.Valid {
+		respondWithError(w, 401, "refresh token has been revoked")
+		return
+	}
+
+	// Generate JWT token for the user
+	token, err := auth.MakeJWT(user.ID, cfg.TokenSecret, TokenExpiresIn)
+	if err != nil {
+		respondWithError(w, 500, err.Error())
+		return
+	}
+
+	newAccessToken := accessTokenRequest{
+		Token: token,
+	}
+	respondWithJson(w, 200, newAccessToken)
+
+}
+
+func (cfg *ApiConfig) HandleRevoke(w http.ResponseWriter, r *http.Request){
+	// Get the refresh token from the request headers
+	refreshToken, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, 401, err.Error())
+		return
+	}
+	// Revoke the refresh token in the database
+	err = revokeRefreshToken(r.Context(),cfg,refreshToken)
+	if err != nil{
+		respondWithError(w,500,err.Error())
+		return
+	}
+	respondWithText(w,204,"OK")
 }
 
 func (cfg *ApiConfig) HandleCreateChirp(w http.ResponseWriter, r *http.Request) {
@@ -105,16 +154,16 @@ func (cfg *ApiConfig) HandleCreateChirp(w http.ResponseWriter, r *http.Request) 
 		cleaned_Body := checkProfanity(reqBody.Body)
 
 		// Get the bearer token from the request headers
-		token,err := auth.GetBearerToken(r.Header)
-		if err != nil{
-			respondWithError(w,401,err.Error())
+		token, err := auth.GetBearerToken(r.Header)
+		if err != nil {
+			respondWithError(w, 401, err.Error())
 			return
 		}
 
 		// Validate the JWT token and extract the user ID
-		userID,err := auth.ValidateJWT(token,cfg.TokenSecret)
-		if err != nil{
-			respondWithError(w,401,err.Error())
+		userID, err := auth.ValidateJWT(token, cfg.TokenSecret)
+		if err != nil {
+			respondWithError(w, 401, err.Error())
 			return
 		}
 
@@ -158,7 +207,5 @@ func (cfg *ApiConfig) HandleGetChirp(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleHealth(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+	respondWithText(w,204,"OK")
 }
