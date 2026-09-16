@@ -1,3 +1,5 @@
+#the tokens are dynamically generated and will change with each request. You can use the refresh token to get a new access token when the old one expires. The access token is used to authenticate requests to protected endpoints. The refresh token is used to obtain a new access token without requiring the user to log in again.
+
 GET http://localhost:8080/app/ 
 
 ###
@@ -22,12 +24,25 @@ GET http://localhost:8080/api/chirps
 GET http://localhost:8080/api/chirps/355d52be-91f2-492b-8ed5-d4ec79d71593
 
 ###
+DELETE http://localhost:8080/api/chirps/355d52be-91f2-492b-8ed5-d4ec79d71593
+
+
+###
 POST http://localhost:8080/api/users
 Content-Type: application/json
 
 {
-  "email": "saul@bettercall.com",
+  "email": "walt@breakingbad.com",
   "password": "123456"
+}
+
+###
+PUT http://localhost:8080/api/users
+Authorization: Bearer 231acdd9877e3f68b3c53e2cf6513cbd6bf089618d6284c872715b284db6cd8b
+
+{
+  "email": "walter@breakingbad.com",
+  "password": "losPollosHermanos"
 }
 
 ###
@@ -35,7 +50,7 @@ POST http://localhost:8080/api/login
 Content-Type: application/json
 
 {
-  "email": "saul@bettercall.com",
+  "email": "walt@breakingbad.com",
   "password": "123456"
 }
 

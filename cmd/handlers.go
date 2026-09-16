@@ -67,6 +67,39 @@ func (cfg *ApiConfig) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 	respondWithJson(w, 201, user)
 }
 
+func (cfg *ApiConfig) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
+
+	var reqBody usersRequest
+
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&reqBody); err != nil {
+		respondWithError(w, 500, err.Error())
+		return
+	}
+
+	// Get the bearer token from the request headers
+	accessToken, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, 401, err.Error())
+		return
+	}
+
+	// Validate the JWT token and extract the user ID ie authorization
+	userID, err := auth.ValidateJWT(accessToken, cfg.TokenSecret)
+	if err != nil {
+		respondWithError(w, 401, err.Error())
+		return
+	}
+
+	// Update the user in the database
+	updatedUser, err := updateUserLogin(userID, reqBody, r.Context(), cfg)
+	if err != nil {
+		respondWithError(w, 401, err.Error())
+		return
+	}
+	respondWithJson(w, 200, updatedUser)
+}
+
 func (cfg *ApiConfig) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	var reqBody usersRequest
@@ -124,7 +157,7 @@ func (cfg *ApiConfig) HandleRefresh(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (cfg *ApiConfig) HandleRevoke(w http.ResponseWriter, r *http.Request){
+func (cfg *ApiConfig) HandleRevoke(w http.ResponseWriter, r *http.Request) {
 	// Get the refresh token from the request headers
 	refreshToken, err := auth.GetBearerToken(r.Header)
 	if err != nil {
@@ -132,12 +165,12 @@ func (cfg *ApiConfig) HandleRevoke(w http.ResponseWriter, r *http.Request){
 		return
 	}
 	// Revoke the refresh token in the database
-	err = revokeRefreshToken(r.Context(),cfg,refreshToken)
-	if err != nil{
-		respondWithError(w,500,err.Error())
+	err = revokeRefreshToken(r.Context(), cfg, refreshToken)
+	if err != nil {
+		respondWithError(w, 500, err.Error())
 		return
 	}
-	respondWithText(w,204,"OK")
+	respondWithText(w, 204, "OK")
 }
 
 func (cfg *ApiConfig) HandleCreateChirp(w http.ResponseWriter, r *http.Request) {
@@ -206,6 +239,49 @@ func (cfg *ApiConfig) HandleGetChirp(w http.ResponseWriter, r *http.Request) {
 	respondWithJson(w, 200, chirp)
 }
 
-func HandleHealth(w http.ResponseWriter, r *http.Request) {
+
+func (cfg *ApiConfig) HandleDeleteChirp(w http.ResponseWriter,r *http.Request){
+	chirpID := r.PathValue("chirpID")
+
+	parsedID, err := uuid.Parse(chirpID)
+	if err != nil {
+		respondWithError(w, 500, err.Error())
+		return
+	}
+
+	chirp,err := getChirp(r.Context(),cfg,parsedID)
+	if err != nil{
+		respondWithError(w,500,err.Error())
+		return
+	}
+
+	// Get the bearer token from the request headers
+	accessToken, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, 401, err.Error())
+		return
+	}
+
+	user_id,err := auth.ValidateJWT(accessToken,cfg.TokenSecret)
+	if err != nil{
+		respondWithError(w,401,err.Error())
+		return
+	}
+
+	if user_id != chirp.UserID{
+		respondWithError(w,403,"403 Forbidden: You are not authorized to delete this chirp")
+		return
+	}
+
+	err = deleteChirp(r.Context(),cfg,chirp.ID)
+	if err != nil{
+		respondWithError(w,404,err.Error())
+		return
+	}
 	respondWithText(w,204,"OK")
+}
+
+
+func HandleHealth(w http.ResponseWriter, r *http.Request) {
+	respondWithText(w, 204, "OK")
 }

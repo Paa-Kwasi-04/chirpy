@@ -17,6 +17,8 @@ func main() {
 	mux.HandleFunc("GET /api/healthz", cmd.HandleHealth)
 
 	mux.HandleFunc("POST /api/users", cfg.HandleCreateUser)
+	mux.HandleFunc("PUT /api/users",cfg.HandleUpdateUser)
+
 	mux.HandleFunc("POST /api/login",cfg.HandleLogin)
 	mux.HandleFunc("POST /api/refresh",cfg.HandleRefresh)
 	mux.HandleFunc("POST /api/revoke",cfg.HandleRevoke)
@@ -24,6 +26,7 @@ func main() {
 	mux.HandleFunc("POST /api/chirps", cfg.HandleCreateChirp)
 	mux.HandleFunc("GET /api/chirps", cfg.HandleGetChirps)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", cfg.HandleGetChirp)
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}",cfg.HandleDeleteChirp)
 
 	mux.HandleFunc("GET /admin/metrics", cfg.HandlerMetrics)
 	mux.HandleFunc("POST /admin/reset", cfg.HandlerReset)

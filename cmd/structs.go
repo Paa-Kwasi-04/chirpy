@@ -15,13 +15,20 @@ type ApiConfig struct {
 	TokenSecret    string
 }
 
-type User struct { //converts db user struct t user struct with tags
+type userLogin struct { //converts db user struct t user struct with tags
 	ID           uuid.UUID `json:"id"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 	Email        string    `json:"email"`
 	Token        string    `json:"token"`
 	RefreshToken string    `json:"refresh_token"`
+}
+
+type userCreate struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
 }
 
 // struct for POST /api/chirps

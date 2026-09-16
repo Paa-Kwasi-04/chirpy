@@ -80,7 +80,7 @@ func checkProfanity(body string) string {
 }
 
 
-func createUser(reqBody usersRequest, ctx context.Context, cfg *ApiConfig) (*User, error) {
+func createUser(reqBody usersRequest, ctx context.Context, cfg *ApiConfig) (*userCreate, error) {
 
 	hash_password, err := auth.HashPassword(reqBody.Password)
 	if err != nil {
@@ -101,15 +101,44 @@ func createUser(reqBody usersRequest, ctx context.Context, cfg *ApiConfig) (*Use
 		return nil, err
 	}
 
-	// Create a response user struct to hold the response data
-	responseUser := User{ 
-		ID:        user.ID,
+	createdUser := userCreate{
+		ID: user.ID,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
+		Email: user.Email,
 	}
 
-	return &responseUser, nil
+	return &createdUser, nil
+}
+
+func updateUserLogin(user_id uuid.UUID,reqBody usersRequest, ctx context.Context, cfg *ApiConfig)(*userCreate, error){
+	
+	hashed_password,err := auth.HashPassword(reqBody.Password)
+	if err != nil{
+		return nil,err
+	}
+	
+	now := time.Now()
+	updateUserParam := database.UpdateUserLoginParams{
+		Email: reqBody.Email,
+		HashedPassword: hashed_password,
+		UpdatedAt: now,
+		ID: user_id,
+	}
+
+	user,err := cfg.DB.UpdateUserLogin(ctx,updateUserParam)
+	if err != nil{
+		return nil,err
+	}
+
+	updatedUser := userCreate{
+		ID: user.ID,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+		Email: user.Email,
+	}
+
+	return &updatedUser,nil
 }
 
 func deleteusers(ctx context.Context, cfg *ApiConfig) error {
@@ -117,7 +146,7 @@ func deleteusers(ctx context.Context, cfg *ApiConfig) error {
 }
 
 const TokenExpiresIn = 1 * time.Hour
-func getUser(ctx context.Context, reqBody usersRequest, cfg *ApiConfig) (*User, error) {
+func getUser(ctx context.Context, reqBody usersRequest, cfg *ApiConfig) (*userLogin, error) {
 
 	user, err := cfg.DB.GetUser(ctx, reqBody.Email)
 	if err != nil {
@@ -148,7 +177,7 @@ func getUser(ctx context.Context, reqBody usersRequest, cfg *ApiConfig) (*User, 
 	}
 
 	// Create a response user struct to hold the response data
-	responseUser := User{
+	responseUser := userLogin{
 		ID:        user.ID,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
@@ -273,3 +302,6 @@ func getChirp(ctx context.Context, cfg *ApiConfig, id uuid.UUID) (*createChirpsR
 }
 
 
+func deleteChirp(ctx context.Context, cfg *ApiConfig, chirp_id uuid.UUID)error{
+	return cfg.DB.DeleteChirp(ctx,chirp_id)
+}
