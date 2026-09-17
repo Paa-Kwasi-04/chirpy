@@ -13,24 +13,25 @@ type ApiConfig struct {
 	DB             *database.Queries
 	Platform       string
 	TokenSecret    string
+	Polka_Key      string
 }
 
 type userLogin struct { //converts db user struct t user struct with tags
-	ID           uuid.UUID `json:"id"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	Email        string    `json:"email"`
-	Is_Chirpy_Red bool	`json:"is_chirpy_red"`
-	Token        string    `json:"token"`
-	RefreshToken string    `json:"refresh_token"`
+	ID            uuid.UUID `json:"id"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	Email         string    `json:"email"`
+	Is_Chirpy_Red bool      `json:"is_chirpy_red"`
+	Token         string    `json:"token"`
+	RefreshToken  string    `json:"refresh_token"`
 }
 
 type userCreate struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
-	Is_Chirpy_Red bool	`json:"is_chirpy_red"`
+	ID            uuid.UUID `json:"id"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	Email         string    `json:"email"`
+	Is_Chirpy_Red bool      `json:"is_chirpy_red"`
 }
 
 // struct for POST /api/chirps
@@ -70,11 +71,10 @@ type accessTokenRequest struct {
 	Token string `json:"token"`
 }
 
-
 // struct for POST /api/polka/webhooks
-type polkaWebhookRequest struct{
+type polkaWebhookRequest struct {
 	Event string `json:"event"`
-	Data struct{
+	Data  struct {
 		UserID string `json:"user_id"`
-	}`json:"data"`
+	} `json:"data"`
 }

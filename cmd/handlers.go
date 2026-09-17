@@ -285,6 +285,17 @@ const polkaEvent = "user.upgraded"
 func (cfg *ApiConfig) HandlePolkaWebhook(w http.ResponseWriter,r *http.Request){
 	var reqBody polkaWebhookRequest
 
+	apiKey,err := auth.GetAPIKey(r.Header)
+	if err != nil{
+		respondWithError(w,401,err.Error())
+		return
+	}
+
+	if apiKey != cfg.Polka_Key{
+		respondWithError(w,401,"Unauthorized Webhook Request")
+		return
+	}
+
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&reqBody); err != nil {
 		respondWithError(w, 400, err.Error())

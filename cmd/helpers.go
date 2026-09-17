@@ -23,6 +23,7 @@ func Startup() *ApiConfig {
 	dbURL := os.Getenv("DB_URL")
 	platform := os.Getenv("PLATFORM")
 	tokenSecret := os.Getenv("TOKEN_SECRET")
+	polka_key := os.Getenv("POLKA_KEY")
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -36,6 +37,7 @@ func Startup() *ApiConfig {
 		DB:       dbQueries,
 		Platform: platform,
 		TokenSecret: tokenSecret,
+		Polka_Key: polka_key,
 	}
 	return &cfg
 }
