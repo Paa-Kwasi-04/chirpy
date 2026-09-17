@@ -281,6 +281,35 @@ func (cfg *ApiConfig) HandleDeleteChirp(w http.ResponseWriter,r *http.Request){
 	respondWithText(w,204,"OK")
 }
 
+const polkaEvent = "user.upgraded"
+func (cfg *ApiConfig) HandlePolkaWebhook(w http.ResponseWriter,r *http.Request){
+	var reqBody polkaWebhookRequest
+
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&reqBody); err != nil {
+		respondWithError(w, 400, err.Error())
+		return
+	}
+
+	if reqBody.Event != polkaEvent{
+		respondWithText(w,204,"OK")
+		return
+	}
+
+	user_id,err := uuid.Parse(reqBody.Data.UserID)
+	if err != nil{
+		respondWithError(w,500,err.Error())
+		return
+	}
+
+	err = upgradeUserToChirpRed(r.Context(),cfg,user_id)
+	if err != nil{
+		respondWithError(w,404,err.Error())
+		return
+	}
+	respondWithText(w,204,"Upgrade Successful")
+}
+
 
 func HandleHealth(w http.ResponseWriter, r *http.Request) {
 	respondWithText(w, 204, "OK")

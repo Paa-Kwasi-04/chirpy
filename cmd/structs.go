@@ -20,6 +20,7 @@ type userLogin struct { //converts db user struct t user struct with tags
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 	Email        string    `json:"email"`
+	Is_Chirpy_Red bool	`json:"is_chirpy_red"`
 	Token        string    `json:"token"`
 	RefreshToken string    `json:"refresh_token"`
 }
@@ -29,6 +30,7 @@ type userCreate struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
+	Is_Chirpy_Red bool	`json:"is_chirpy_red"`
 }
 
 // struct for POST /api/chirps
@@ -66,4 +68,13 @@ type usersRequest struct {
 // struct for POST /api/refresh
 type accessTokenRequest struct {
 	Token string `json:"token"`
+}
+
+
+// struct for POST /api/polka/webhooks
+type polkaWebhookRequest struct{
+	Event string `json:"event"`
+	Data struct{
+		UserID string `json:"user_id"`
+	}`json:"data"`
 }

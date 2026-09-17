@@ -136,6 +136,7 @@ func updateUserLogin(user_id uuid.UUID,reqBody usersRequest, ctx context.Context
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email: user.Email,
+		Is_Chirpy_Red: user.IsChirpyRed,
 	}
 
 	return &updatedUser,nil
@@ -182,6 +183,7 @@ func getUser(ctx context.Context, reqBody usersRequest, cfg *ApiConfig) (*userLo
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email:     user.Email,
+		Is_Chirpy_Red: user.IsChirpyRed,
 		Token: token,
 		RefreshToken: refreshTokenObj.Token,
 	}
@@ -304,4 +306,16 @@ func getChirp(ctx context.Context, cfg *ApiConfig, id uuid.UUID) (*createChirpsR
 
 func deleteChirp(ctx context.Context, cfg *ApiConfig, chirp_id uuid.UUID)error{
 	return cfg.DB.DeleteChirp(ctx,chirp_id)
+}
+
+
+//helper for the polka webhook
+func upgradeUserToChirpRed(ctx context.Context,cfg *ApiConfig,user_id uuid.UUID)error{
+	now := time.Now()
+	upgradeToRedParam := database.UpgradeUserToChirpRedParams{
+		UpdatedAt: now,
+		ID: user_id,
+	}
+
+	return cfg.DB.UpgradeUserToChirpRed(ctx,upgradeToRedParam)
 }
