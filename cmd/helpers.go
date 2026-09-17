@@ -286,6 +286,29 @@ func getChirps(ctx context.Context, cfg *ApiConfig) ([]createChirpsResponse, err
 	return responseChirps, nil
 }
 
+func getChirpsForAuthor(cfg *ApiConfig,ctx context.Context,author_id uuid.UUID)([]createChirpsResponse, error){
+	chirps,err := cfg.DB.GetChirpFromAuthor(ctx,author_id)
+	if err != nil{
+		return nil,err
+	}
+
+	// Create a slice to hold the response chirps 
+	responseChirps := make([]createChirpsResponse, len(chirps))
+	for i, chirp := range chirps {
+		responseChirp := createChirpsResponse{
+			ID:        chirp.ID,
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body:      chirp.Body,
+			UserID:    chirp.UserID,
+		}
+		responseChirps[i] = responseChirp
+	}
+	
+	return responseChirps, nil
+}
+
+
 func getChirp(ctx context.Context, cfg *ApiConfig, id uuid.UUID) (*createChirpsResponse, error) {
 
 	chirp, err := cfg.DB.GetChirp(ctx, id)
@@ -304,6 +327,7 @@ func getChirp(ctx context.Context, cfg *ApiConfig, id uuid.UUID) (*createChirpsR
 
 	return &responseChirp, nil
 }
+
 
 
 func deleteChirp(ctx context.Context, cfg *ApiConfig, chirp_id uuid.UUID)error{

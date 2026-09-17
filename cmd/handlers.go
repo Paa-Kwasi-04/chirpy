@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/Paa-Kwasi-04/chirpy/internal/auth"
@@ -214,10 +215,45 @@ func (cfg *ApiConfig) HandleCreateChirp(w http.ResponseWriter, r *http.Request) 
 }
 
 func (cfg *ApiConfig) HandleGetChirps(w http.ResponseWriter, r *http.Request) {
+
+	sortOrder := r.URL.Query().Get("sort")
+
+	// Check if the request has an author_id query parameter
+	author_id := r.URL.Query().Get("author_id")
+	if len(author_id) != 0 {
+		// If author_id is provided, fetch chirps by that author
+		parsedID, err := uuid.Parse(author_id)
+		if err != nil {
+			respondWithError(w, 500, err.Error())
+			return
+		}
+		// Fetch chirps for the specified author in ascending order by default
+		chirps, err := getChirpsForAuthor(cfg, r.Context(), parsedID)
+		if err != nil {
+			respondWithError(w, 404, err.Error())
+			return
+		}
+
+		// Sort the chirps based on the sortOrder query parameter
+		if sortOrder == "desc" {
+			sort.Slice(chirps, func(i, j int) bool {
+				return chirps[i].CreatedAt.After(chirps[j].CreatedAt)
+			})
+		}
+		respondWithJson(w, 200, chirps)
+		return
+	}
+
 	chirps, err := getChirps(r.Context(), cfg)
 	if err != nil {
 		respondWithError(w, 404, err.Error())
 		return
+	}
+	// Sort the chirps based on the sortOrder query parameter
+	if sortOrder == "desc" {
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].CreatedAt.After(chirps[j].CreatedAt)
+		})
 	}
 	respondWithJson(w, 200, chirps)
 }
@@ -239,8 +275,7 @@ func (cfg *ApiConfig) HandleGetChirp(w http.ResponseWriter, r *http.Request) {
 	respondWithJson(w, 200, chirp)
 }
 
-
-func (cfg *ApiConfig) HandleDeleteChirp(w http.ResponseWriter,r *http.Request){
+func (cfg *ApiConfig) HandleDeleteChirp(w http.ResponseWriter, r *http.Request) {
 	chirpID := r.PathValue("chirpID")
 
 	parsedID, err := uuid.Parse(chirpID)
@@ -249,9 +284,9 @@ func (cfg *ApiConfig) HandleDeleteChirp(w http.ResponseWriter,r *http.Request){
 		return
 	}
 
-	chirp,err := getChirp(r.Context(),cfg,parsedID)
-	if err != nil{
-		respondWithError(w,500,err.Error())
+	chirp, err := getChirp(r.Context(), cfg, parsedID)
+	if err != nil {
+		respondWithError(w, 500, err.Error())
 		return
 	}
 
@@ -262,37 +297,38 @@ func (cfg *ApiConfig) HandleDeleteChirp(w http.ResponseWriter,r *http.Request){
 		return
 	}
 
-	user_id,err := auth.ValidateJWT(accessToken,cfg.TokenSecret)
-	if err != nil{
-		respondWithError(w,401,err.Error())
+	user_id, err := auth.ValidateJWT(accessToken, cfg.TokenSecret)
+	if err != nil {
+		respondWithError(w, 401, err.Error())
 		return
 	}
 
-	if user_id != chirp.UserID{
-		respondWithError(w,403,"403 Forbidden: You are not authorized to delete this chirp")
+	if user_id != chirp.UserID {
+		respondWithError(w, 403, "403 Forbidden: You are not authorized to delete this chirp")
 		return
 	}
 
-	err = deleteChirp(r.Context(),cfg,chirp.ID)
-	if err != nil{
-		respondWithError(w,404,err.Error())
+	err = deleteChirp(r.Context(), cfg, chirp.ID)
+	if err != nil {
+		respondWithError(w, 404, err.Error())
 		return
 	}
-	respondWithText(w,204,"OK")
+	respondWithText(w, 204, "OK")
 }
 
 const polkaEvent = "user.upgraded"
-func (cfg *ApiConfig) HandlePolkaWebhook(w http.ResponseWriter,r *http.Request){
+
+func (cfg *ApiConfig) HandlePolkaWebhook(w http.ResponseWriter, r *http.Request) {
 	var reqBody polkaWebhookRequest
 
-	apiKey,err := auth.GetAPIKey(r.Header)
-	if err != nil{
-		respondWithError(w,401,err.Error())
+	apiKey, err := auth.GetAPIKey(r.Header)
+	if err != nil {
+		respondWithError(w, 401, err.Error())
 		return
 	}
 
-	if apiKey != cfg.Polka_Key{
-		respondWithError(w,401,"Unauthorized Webhook Request")
+	if apiKey != cfg.Polka_Key {
+		respondWithError(w, 401, "Unauthorized Webhook Request")
 		return
 	}
 
@@ -302,25 +338,24 @@ func (cfg *ApiConfig) HandlePolkaWebhook(w http.ResponseWriter,r *http.Request){
 		return
 	}
 
-	if reqBody.Event != polkaEvent{
-		respondWithText(w,204,"OK")
+	if reqBody.Event != polkaEvent {
+		respondWithText(w, 204, "OK")
 		return
 	}
 
-	user_id,err := uuid.Parse(reqBody.Data.UserID)
-	if err != nil{
-		respondWithError(w,500,err.Error())
+	user_id, err := uuid.Parse(reqBody.Data.UserID)
+	if err != nil {
+		respondWithError(w, 500, err.Error())
 		return
 	}
 
-	err = upgradeUserToChirpRed(r.Context(),cfg,user_id)
-	if err != nil{
-		respondWithError(w,404,err.Error())
+	err = upgradeUserToChirpRed(r.Context(), cfg, user_id)
+	if err != nil {
+		respondWithError(w, 404, err.Error())
 		return
 	}
-	respondWithText(w,204,"Upgrade Successful")
+	respondWithText(w, 204, "Upgrade Successful")
 }
-
 
 func HandleHealth(w http.ResponseWriter, r *http.Request) {
 	respondWithText(w, 204, "OK")
